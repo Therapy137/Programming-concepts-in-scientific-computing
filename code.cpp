@@ -234,11 +234,7 @@ int main() {
     Functions f2([](const Point& p) {
     double x = p[0];
     double y = p[1];
-
-    return Point{
-        x * sin(x * y),
-        x * cos(x * y),
-        x * y};});
+    return Point{x*sin(x*y), x*cos(x*y), x*y};});
 
     Integration I2(grid2D, f2);
 
