@@ -10,8 +10,8 @@
 
 class Integration {
 protected:
-    Grid grid;
-    Functions func;
+    const Grid &grid;
+    const Functions &func;
 public:
     Integration(const Grid &g, const Functions &f);
     virtual ~Integration() = default;

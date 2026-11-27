@@ -3,9 +3,10 @@
 //
 
 #include "Grid.h"
-
+#include <cmath>
 
 // Constructeur 1D
+
 Grid::Grid(std::initializer_list<double> x, std::size_t Nx)
     : nx(Nx), ny(0), nz(0), dim(1) {
     auto it = x.begin();
@@ -30,8 +31,9 @@ Grid::Grid(std::initializer_list<double> x, std::size_t Nx, std::initializer_lis
 }
 
 // Constructeur 3D
-Grid::Grid(std::initializer_list<double> x, std::size_t Nx, std::initializer_list<double> y, std::size_t Ny, std::initializer_list<double> z,
-     std::size_t Nz)
+Grid::Grid(std::initializer_list<double> x, std::size_t Nx, std::initializer_list<double> y, std::size_t Ny,
+           std::initializer_list<double> z,
+           std::size_t Nz)
     : nx(Nx), ny(Ny), nz(Nz), dim(3) {
     auto ix = x.begin();
     auto iy = y.begin();
@@ -45,8 +47,17 @@ Grid::Grid(std::initializer_list<double> x, std::size_t Nx, std::initializer_lis
     buildGrid();
 }
 
-// Construction automatique du grillage
 void Grid::buildGrid() {
+    points.clear();
+    double hx = (xmax - xmin) / nx;
+    for (size_t k = 0; k <= nz; k++) {
+        double px = xmin + k * hx;
+        points.push_back(Point{px});
+    };
+}
+
+// Construction automatique du grillage
+void Square::buildGrid() {
     points.clear();
     double hx = (xmax - xmin) / nx;
     double hy = (dim >= 2) ? (ymax - ymin) / ny : 0.0;
@@ -58,10 +69,7 @@ void Grid::buildGrid() {
                 double px = xmin + i * hx;
                 double py = ymin + j * hy;
                 double pz = zmin + k * hz;
-
-                if (dim == 1)
-                    points.push_back(Point{px});
-                else if (dim == 2)
+                if (dim == 2)
                     points.push_back(Point{px, py});
                 else
                     points.push_back(Point{px, py, pz});
@@ -71,8 +79,8 @@ void Grid::buildGrid() {
 }
 
 // Récupérer un sommet
-Point Grid::getPoint(std::size_t i, std::size_t j, std::size_t k ) const {
-    size_t index = k * (ny + 1) * (nx + 1) + j * (nx + 1) + i;
+Point Grid::getPoint(std::size_t i, std::size_t j, std::size_t k) const {
+    size_t index = k * (ny + 1) * (nx+1) + j * (nx + 1) + i;
     return points.at(index);
 }
 
@@ -104,3 +112,72 @@ double Grid::getCellMeasure() const {
     return hx * hy * hz;
 }
 
+Circle::Circle(std::initializer_list<double> coords, double r, std::size_t Nx, std::size_t Ny) : Grid(
+        {0,r}, Nx, {0,2*M_PI}, Ny), radius(r), center(coords) { buildGrid(); };
+Circle::Circle(std::initializer_list<double> coords, double r, std::size_t Nx, std::size_t Ny, std::size_t Nz) : Grid(
+        {0,r}, Nx, {0,2*M_PI}, Ny, {0,M_PI}, Nz), radius(r), center(coords) { buildGrid(); };
+void Circle::buildGrid() {
+    points.clear();
+    double hr = (xmax - xmin) / nx;
+    double htheta = (ymax - ymin) / ny;
+    double hphi = (dim == 3) ? (zmax - zmin) / nz : 0.0;
+
+    for (std::size_t k = 0; k <= nz; k++) {
+        for (std::size_t j = 0; j <= ny; j++) {
+            for (std::size_t i = 0; i <= nx; i++) {
+                double r = xmin + i * hr;
+                double theta = ymin + j * htheta;
+
+                if (dim == 2) {
+                    double px = center[0] + r * std::cos(theta);
+                    double py = center[1] + r * std::sin(theta);
+                    points.push_back(Point{px, py});
+                } else if (dim == 3) {
+                    double phi = zmin + k * hphi;
+                    double px = center[0] + r * std::sin(phi) * std::cos(theta);
+                    double py = center[1] + r * std::sin(phi) * std::sin(theta);
+                    double pz = center[2] + r * std::cos(phi);
+                    points.push_back(Point{px, py, pz});
+                }
+            }
+        }
+    }
+}
+Point Circle::getCellCenter(std::size_t i, std::size_t j, std::size_t k) const {
+    double r = xmin + (i + 0.5) * (xmax - xmin) / nx;
+    double theta = ymin + (j + 0.5) * (ymax - ymin) / ny;
+
+    if (dim == 2) {
+        return Point{
+            center[0] + r * std::cos(theta),
+            center[1] + r * std::sin(theta)
+        };
+    }
+    double phi = zmin + (k + 0.5) * (zmax - zmin) / nz;
+    return Point{
+        center[0] + r * std::sin(phi) * std::cos(theta),
+        center[1] + r * std::sin(phi) * std::sin(theta),
+        center[2] + r * std::cos(phi)
+    };
+}
+double Circle::jacobian(const Point& p) const {
+    double dx = p[0] - center[0];
+    double dy = p[1] - center[1];
+    if (dim == 2) {
+        // |det(J)| = r
+        return std::sqrt(dx * dx + dy * dy);
+    }
+    // In 3D spherical coordinates: |det(J)| = r^2 * sin(phi) = r * sqrt(dx^2 + dy^2)
+    double dz = p[2] - center[2];
+    double r = std::sqrt(dx * dx + dy * dy + dz * dz);
+    double rho = std::sqrt(dx * dx + dy * dy);
+    return r * rho;
+}
+
+double Square::jacobian(const Point &p) const {
+    return 1;
+}
+
+double Grid::jacobian(const Point &p) const {
+    return 1;
+}

@@ -7,6 +7,7 @@
 #include "Point.h"
 #include <vector>
 #include <functional>
+#include <iostream>
 
 class Functions {
 protected:
@@ -22,5 +23,6 @@ class Polynomial : public Functions {
 public:
     Polynomial(std::initializer_list<double> c);
 };
+
 
 #endif //MYPROJECT_FUNCTIONS_H
